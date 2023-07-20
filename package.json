@@ -11,7 +11,7 @@
 		"prepare": "npm run build"
 	},
 	"dependencies": {
-		"@syuilo/aiscript": "^0.14.0"
+		"@syuilo/aiscript": "^0.15.0"
 	},
 	"devDependencies": {
 		"@types/node": "^20.4.2",
