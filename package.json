@@ -1,0 +1,21 @@
+{
+	"type": "module",
+	"bin": "./src/cli.js",
+	"scripts": {
+		"build": "node --loader ts-node/esm ./build/build.ts",
+		"build-playground": "cd playground ; npm run build ; cd ..",
+		"start": "node src/index.js",
+		"dev": "npm run build && npm run start",
+		"prepare": "npm run build"
+	},
+	"dependencies": {
+		"@syuilo/aiscript": "^0.14.0"
+	},
+	"devDependencies": {
+		"@types/node": "^20.4.2",
+		"esbuild": "^0.18.14",
+		"globby": "^13.2.2",
+		"ts-node": "^10.9.1",
+		"typescript": "^5.1.6"
+	}
+}
