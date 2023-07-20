@@ -34,10 +34,13 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 20
+      - uses: pnpm/action-setup@v2
+        with:
+          version: latest
       - name: Setup Pages
         uses: actions/configure-pages@v3
-      - run: npm ci
-      - run: cd playground && npm ci && npm run build && cd ..
+      - run: pnpm i
+      - run: cd playground && pnpm i && pnpm run build && cd ..
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
         with:
