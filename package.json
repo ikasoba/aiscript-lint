@@ -1,5 +1,7 @@
 {
 	"type": "module",
+	"name": "aiscript-lint",
+	"main": "./src/index.js",
 	"bin": "./src/cli.js",
 	"scripts": {
 		"build": "node --loader ts-node/esm ./build/build.ts",

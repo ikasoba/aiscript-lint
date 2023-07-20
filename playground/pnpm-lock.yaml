@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  aiscript-lint:
+    specifier: link:..
+    version: link:..
   monaco-editor:
     specifier: ^0.40.0
     version: 0.40.0

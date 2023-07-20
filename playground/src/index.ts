@@ -1,11 +1,6 @@
 import * as monaco from "monaco-editor";
 import { Parser } from "@syuilo/aiscript";
-import {
-  stdScope,
-  typeCheckBlock,
-  getLine,
-  getLineIndex,
-} from "../../src/index.js";
+import { stdScope, typeCheckBlock, getLine, getLineIndex } from "aiscript-lint";
 import { install } from "./aiscript.language.js";
 
 const defaultCode = "var hoge: str = 1234";
@@ -32,6 +27,8 @@ function App(wrapper: HTMLElement) {
 
       const errors = typeCheckBlock(ast, stdScope);
 
+      console.log("a", errors);
+
       for (const err of errors) {
         const startLine = getLine(code, err.location.start);
         const startColumn = getLineIndex(code, err.location.start);
@@ -52,8 +49,11 @@ function App(wrapper: HTMLElement) {
         });
       }
     } catch (e: any) {
+      console.error(e);
+
       const message: string = e.message;
       const m = message.match(/\(Line ([0-9]+):([0-9]+)\)/);
+
       if (m != null) {
         const [_, line, column] = m;
 

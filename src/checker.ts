@@ -58,14 +58,43 @@ export const stdTypes = {
   obj: { type: "primitiveTypeName", name: "obj" },
   null: { type: "primitiveTypeName", name: "null" },
   any: { type: "primitiveTypeName", name: "any" },
-} as const;
+} satisfies { [k: string]: AiType };
 
-export const stdScope: Scope = new Scope({}, stdTypes);
+export const stdScope: Scope = new Scope(
+  {
+    "Core:add": {
+      type: "functionType",
+      args: [stdTypes.num, stdTypes.num],
+      returnType: stdTypes.num,
+    },
+    "Core:sub": {
+      type: "functionType",
+      args: [stdTypes.num, stdTypes.num],
+      returnType: stdTypes.num,
+    },
+    "Core:mul": {
+      type: "functionType",
+      args: [stdTypes.num, stdTypes.num],
+      returnType: stdTypes.num,
+    },
+    "Core:div": {
+      type: "functionType",
+      args: [stdTypes.num, stdTypes.num],
+      returnType: stdTypes.num,
+    },
+    "Core:pow": {
+      type: "functionType",
+      args: [stdTypes.num, stdTypes.num],
+      returnType: stdTypes.num,
+    },
+  },
+  stdTypes
+);
 
 export class TypeError extends Error {
   constructor(
     message: string,
-    public location: { start: number; end: number }
+    public location: { start: number; end: number } = { start: 0, end: 0 }
   ) {
     super(message + ` start: ${location.start} end: ${location.end}`);
   }
@@ -92,7 +121,7 @@ export function typeCheck(
           `${toStringAiType(exprType)}は${toStringAiType(
             varType
           )}に代入できません`,
-          node.expr.loc!
+          node.loc!
         )
       );
 
@@ -127,8 +156,6 @@ export function typeCheck(
       );
     }
 
-    //console.log(functionType, node);
-
     if (functionType.type == "functionType") {
       if (functionType.args instanceof Array) {
         if (node.args.length != functionType.args.length) {
@@ -138,7 +165,7 @@ export function typeCheck(
         const args = functionType.args;
         const argTypes = node.args.map((x) => getType(x, scope));
 
-        for (let i = 0; i < args.length; i++) {
+        for (let i = 0; i < args.length && i < argTypes.length; i++) {
           errors.push(...typeCheck(node.args[i], scope, parent));
           if (!compareType(args[i], argTypes[i], scope)) {
             errors.push(
@@ -349,6 +376,12 @@ export function getType(node: Node, scope: Scope): AiType {
         ? getType(node.retType, scope)
         : typeInferenceFromBlock(node.children, scope),
     };
+  } else if (node.type == "call") {
+    const fnType = getType(node.target, scope);
+    if (fnType.type == "functionType") {
+      return fnType.returnType;
+    }
+    return stdTypes.any;
   } else {
     return stdTypes.any;
   }
