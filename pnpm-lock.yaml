@@ -6,8 +6,8 @@ settings:
 
 dependencies:
   '@syuilo/aiscript':
-    specifier: ^0.14.0
-    version: 0.14.0
+    specifier: ^0.15.0
+    version: 0.15.0
 
 devDependencies:
   '@types/node':
@@ -270,8 +270,8 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@syuilo/aiscript@0.14.0:
-    resolution: {integrity: sha512-Yl28dYykq2eNjrMCKfXybKFj0EZ/fzOGMO53NtJGSyyeCaLx9H1qkGfT21QVdQLyEkiKtSMZ1IyodjSaWS/BUA==}
+  /@syuilo/aiscript@0.15.0:
+    resolution: {integrity: sha512-vauMbqacuHufE4W7bAm5BDWlci3mWg1ZaerPNHKBMrRXDjEfvBkBGZNXKSWvi+zmhiYAbWyozPIlV6byttYpCw==}
     dependencies:
       autobind-decorator: 2.4.0
       seedrandom: 3.0.5
