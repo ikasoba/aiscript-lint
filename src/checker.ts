@@ -1,5 +1,5 @@
 import { Parser, Ast } from "@syuilo/aiscript";
-import { AiType } from "./type.js";
+import { AiType, Type } from "./type.js";
 
 export * from "./type.js";
 
@@ -18,7 +18,12 @@ export function toStringAiType(type: AiType): string {
     }
 
     return `@(${args}): ${toStringAiType(type.returnType)}`;
+  } else if (type.type == "unionType") {
+    return type.children.map((x) => toStringAiType(x)).join(" | ");
+  } else if (type.type == "tupleType") {
+    return "[" + type.children.map((x) => toStringAiType(x)).join(", ") + "]";
   } else {
+    console.log(type);
     return "<unknown>";
   }
 }
@@ -53,6 +58,7 @@ export class Scope {
 
 export const stdTypes = {
   num: { type: "primitiveTypeName", name: "num" },
+  bool: { type: "primitiveTypeName", name: "bool" },
   str: { type: "primitiveTypeName", name: "str" },
   arr: { type: "primitiveTypeName", name: "arr" },
   obj: { type: "primitiveTypeName", name: "obj" },
@@ -62,29 +68,122 @@ export const stdTypes = {
 
 export const stdScope: Scope = new Scope(
   {
+    help: stdTypes.str,
+    "Core:v": stdTypes.str,
+    "Core:ai": stdTypes.str,
+    "Core:not": {
+      type: "functionType",
+      args: Type.tuple(stdTypes.bool),
+      returnType: stdTypes.bool,
+    },
+    "Core:eq": {
+      type: "functionType",
+      args: Type.tuple(stdTypes.any, stdTypes.any),
+      returnType: stdTypes.bool,
+    },
+    "Core:neq": {
+      type: "functionType",
+      args: Type.tuple(stdTypes.any, stdTypes.any),
+      returnType: stdTypes.bool,
+    },
+    "Core:and": {
+      type: "functionType",
+      args: Type.tuple(stdTypes.bool, stdTypes.bool),
+      returnType: stdTypes.bool,
+    },
+    "Core:or": {
+      type: "functionType",
+      args: Type.tuple(stdTypes.bool, stdTypes.bool),
+      returnType: stdTypes.bool,
+    },
     "Core:add": {
       type: "functionType",
-      args: [stdTypes.num, stdTypes.num],
+      args: Type.tuple(stdTypes.num, stdTypes.num),
       returnType: stdTypes.num,
     },
     "Core:sub": {
       type: "functionType",
-      args: [stdTypes.num, stdTypes.num],
+      args: Type.tuple(stdTypes.num, stdTypes.num),
       returnType: stdTypes.num,
     },
     "Core:mul": {
       type: "functionType",
-      args: [stdTypes.num, stdTypes.num],
+      args: Type.tuple(stdTypes.num, stdTypes.num),
       returnType: stdTypes.num,
     },
     "Core:div": {
       type: "functionType",
-      args: [stdTypes.num, stdTypes.num],
+      args: Type.tuple(stdTypes.num, stdTypes.num),
       returnType: stdTypes.num,
     },
     "Core:pow": {
       type: "functionType",
-      args: [stdTypes.num, stdTypes.num],
+      args: Type.tuple(stdTypes.num, stdTypes.num),
+      returnType: stdTypes.num,
+    },
+    "Core:mod": {
+      type: "functionType",
+      args: Type.tuple(stdTypes.num, stdTypes.num),
+      returnType: stdTypes.num,
+    },
+    "Core:gt": {
+      type: "functionType",
+      args: Type.tuple(stdTypes.num, stdTypes.num),
+      returnType: stdTypes.bool,
+    },
+    "Core:lt": {
+      type: "functionType",
+      args: Type.tuple(stdTypes.num, stdTypes.num),
+      returnType: stdTypes.num,
+    },
+    "Core:gteq": {
+      type: "functionType",
+      args: Type.tuple(stdTypes.num, stdTypes.num),
+      returnType: stdTypes.num,
+    },
+    "Core:lteq": {
+      type: "functionType",
+      args: Type.tuple(stdTypes.num, stdTypes.num),
+      returnType: stdTypes.num,
+    },
+    "Core:type": {
+      type: "functionType",
+      args: Type.tuple(stdTypes.any),
+      returnType: stdTypes.str,
+    },
+    "Core:to_str": {
+      type: "functionType",
+      args: Type.tuple(stdTypes.any),
+      returnType: stdTypes.str,
+    },
+    "Core:range": {
+      type: "functionType",
+      args: Type.tuple(stdTypes.num, stdTypes.num),
+      returnType: stdTypes.arr,
+    },
+    "Util:uuid": {
+      type: "functionType",
+      args: Type.tuple(),
+      returnType: stdTypes.str,
+    },
+    "Json:stringify": {
+      type: "functionType",
+      args: Type.tuple(stdTypes.any),
+      returnType: stdTypes.str,
+    },
+    "Json:parseable": {
+      type: "functionType",
+      args: Type.tuple(stdTypes.str),
+      returnType: stdTypes.bool,
+    },
+    "Date:now": {
+      type: "functionType",
+      args: Type.tuple(),
+      returnType: stdTypes.num,
+    },
+    "Date:year": {
+      type: "functionType",
+      args: Type.union(Type.tuple(stdTypes.num), Type.tuple()),
       returnType: stdTypes.num,
     },
   },
@@ -115,35 +214,23 @@ export function typeCheck(
     const exprType = getType(node.expr, scope)!;
     errors.push(...typeCheck(node.expr, scope, parent));
 
-    if (!compareType(varType, exprType, scope)) {
-      errors.push(
-        new TypeError(
-          `${toStringAiType(exprType)}は${toStringAiType(
-            varType
-          )}に代入できません`,
-          node.loc!
-        )
-      );
+    errors.push(
+      ...compareType(varType, exprType, scope).map(
+        (msg) => new TypeError(msg, node.loc)
+      )
+    );
 
-      scope.setVariable(node.name, stdTypes.any);
-    } else {
-      scope.setVariable(node.name, varType);
-    }
+    scope.setVariable(node.name, varType);
   } else if (node.type == "assign") {
     const varType = getType(node.dest, scope);
     const exprType = getType(node.expr, scope);
     errors.push(...typeCheck(node.expr, scope, parent));
 
-    if (!compareType(varType, exprType, scope)) {
-      errors.push(
-        new TypeError(
-          `${toStringAiType(exprType)}は${toStringAiType(
-            varType
-          )}に代入できません`,
-          node.dest.loc!
-        )
-      );
-    }
+    errors.push(
+      ...compareType(varType, exprType, scope).map(
+        (msg) => new TypeError(msg, node.dest.loc!)
+      )
+    );
   } else if (node.type == "call") {
     const functionType = getType(node.target, scope);
 
@@ -157,55 +244,39 @@ export function typeCheck(
     }
 
     if (functionType.type == "functionType") {
-      if (functionType.args instanceof Array) {
-        if (node.args.length != functionType.args.length) {
+      if (functionType.args.type == "tupleType") {
+        if (node.args.length != functionType.args.children.length) {
           errors.push(new TypeError(`引数の数が足りません`, node.loc!));
         }
-
-        const args = functionType.args;
-        const argTypes = node.args.map((x) => getType(x, scope));
-
-        for (let i = 0; i < args.length && i < argTypes.length; i++) {
-          errors.push(...typeCheck(node.args[i], scope, parent));
-          if (!compareType(args[i], argTypes[i], scope)) {
-            errors.push(
-              new TypeError(
-                `${toStringAiType(argTypes[i])}は${toStringAiType(
-                  args[i]
-                )}に代入できません`,
-                node.args[i].loc!
-              )
-            );
-          }
-        }
       }
+
+      const args = functionType.args;
+      const argTypes = Type.tuple(...node.args.map((x) => getType(x, scope)));
+
+      console.log("a - ", args, argTypes);
+
+      errors.push(
+        ...compareType(args, argTypes, scope).map(
+          (msg) => new TypeError(msg, node.loc)
+        )
+      );
     }
   } else if (node.type == "addAssign" || node.type == "subAssign") {
     const targetType = getType(node.dest, scope);
     const valueType = getType(node.expr, scope);
     errors.push(...typeCheck(node.expr, scope, parent));
 
-    if (!compareType(targetType, stdTypes.num, scope)) {
-      errors.push(
-        new TypeError(
-          `${toStringAiType(targetType)}は${toStringAiType(
-            stdTypes.num
-          )}に代入できません`,
-          node.dest.loc!
-        )
-      );
-    }
+    errors.push(
+      ...compareType(targetType, stdTypes.num, scope).map(
+        (msg) => new TypeError(msg, node.dest.loc!)
+      )
+    );
 
-    if (!compareType(valueType, stdTypes.num, scope)) {
-      errors.push(
-        new TypeError(
-          `${toStringAiType(valueType)}は${toStringAiType(
-            stdTypes.num
-          )}に代入できません`,
-          node.expr.loc!
-        )
-      );
-    }
+    errors.push(
+      ...compareType(valueType, stdTypes.num, scope).map(
+        (msg) => new TypeError(msg, node.expr.loc!)
+      )
+    );
   } else if (node.type == "for") {
     const forScope = scope.createChildScope();
     if (node.var != null) {
@@ -279,16 +350,11 @@ export function typeCheckBlock(
       const valueType = getType(x.expr, scope);
 
       if (fn.type == "functionType") {
-        if (!compareType(valueType, fn.returnType, scope)) {
-          errors.push(
-            new TypeError(
-              `${toStringAiType(valueType)}は${toStringAiType(
-                fn.returnType
-              )}に代入できません`,
-              x.loc!
-            )
-          );
-        }
+        errors.push(
+          ...compareType(valueType, fn.returnType, scope).map(
+            (msg) => new TypeError(msg, x.expr.loc)
+          )
+        );
       }
     }
   }
@@ -296,54 +362,78 @@ export function typeCheckBlock(
   return errors;
 }
 
-export function compareType(x: AiType, y: AiType, scope: Scope): boolean {
+/**
+ * xにyが代入可能か調べる
+ */
+export function compareType(x: AiType, y: AiType, scope: Scope): string[] {
+  const errors = [];
+
   if (
     (x.type == "primitiveTypeName" && x.name == "any") ||
     (y.type == "primitiveTypeName" && y.name == "any")
   ) {
-    return true;
-  }
+    return [];
+  } else if (x.type == "functionType" && y.type == "functionType") {
+    errors.push(...compareType(x.returnType, y.returnType, scope));
 
-  if (x.type != y.type) {
-    return false;
-  }
-
-  if (x.type == "functionType" && y.type == "functionType") {
-    if (!compareType(x.returnType, y.returnType, scope)) {
-      return false;
-    }
-
-    if (
-      (!(x.args instanceof Array) && isAny(x.args)) ||
-      (!(y.args instanceof Array) && isAny(y.args))
-    ) {
-      return true;
-    }
-
-    if (x.args instanceof Array && y.args instanceof Array) {
-      if (x.args.length != y.args.length) {
-        return false;
-      }
-
-      for (let i = 0; i < x.args.length; i++) {
-        if (!compareType(x.args[i], y.args[i], scope)) {
-          return false;
+    errors.push(...compareType(x.args, y.args, scope));
+  } else if (x.type == "unionType") {
+    if (y.type == "unionType") {
+      if (x.children.length < y.children.length) {
+        errors.push(
+          `${toStringAiType(y)}と${toStringAiType(x)}は一致していません`
+        );
+      } else {
+        for (const yChild of y.children) {
+          for (const xChild of x.children) {
+            if (compareType(xChild, yChild, scope).length == 0) {
+              break;
+            } else {
+              errors.push(
+                `${toStringAiType(yChild)}は${toStringAiType(
+                  x
+                )}に含まれていません`
+              );
+            }
+          }
         }
       }
-
-      return true;
-    } else if (!(x.args instanceof Array) && !(y.args instanceof Array)) {
-      return compareType(x.args, y.args, scope);
     } else {
-      return false;
+      let isContain = false;
+      for (const xChild of x.children) {
+        if (compareType(xChild, y, scope).length == 0) {
+          isContain = true;
+        }
+      }
+      if (!isContain) {
+        errors.push(
+          `${toStringAiType(y)}は${toStringAiType(x)}に含まれていません`
+        );
+      }
     }
+  } else if (x.type == "tupleType" && y.type == "tupleType") {
+    if (x.children.length != y.children.length) {
+      errors.push(`${toStringAiType(y)}は${toStringAiType(x)}と一致しません。`);
+    }
+
+    for (let i = 0; i < x.children.length; i++) {
+      if (!compareType(x.children[i], y.children[i], scope)) {
+        errors.push(
+          `${toStringAiType(y.children[i])}は${x.children[i]}と一致しません。`
+        );
+      }
+    }
+  } else if (x.type != y.type) {
+    errors.push(`${toStringAiType(y)}は${toStringAiType(x)}と一致しません。`);
+  } else if (
+    x.type == "primitiveTypeName" &&
+    y.type == "primitiveTypeName" &&
+    x.name != y.name
+  ) {
+    errors.push(`${toStringAiType(y)}は${toStringAiType(x)}と一致しません。`);
   }
 
-  if (x != y) {
-    return false;
-  }
-
-  return true;
+  return errors;
 }
 
 export function isAny(x: AiType): boolean {
@@ -369,8 +459,10 @@ export function getType(node: Node, scope: Scope): AiType {
   } else if (node.type == "fn") {
     return {
       type: "functionType",
-      args: node.args.map((x) =>
-        x.argType ? getType(x.argType, scope) : stdTypes.any
+      args: Type.tuple(
+        ...node.args.map((x) =>
+          x.argType ? getType(x.argType, scope) : stdTypes.any
+        )
       ),
       returnType: node.retType
         ? getType(node.retType, scope)
