@@ -1,5 +1,6 @@
 import { ParserPlugin } from "@syuilo/aiscript";
-import { stdScope, typeCheckBlock } from "./checker.js";
+import { typeCheckBlock } from "./checker.js";
+import { stdScope } from "./type.js";
 
 export const plugin: ParserPlugin = (nodes) => {
   const errors = typeCheckBlock(nodes as any, stdScope);

@@ -1,5 +1,6 @@
 import { Parser, Ast } from "@syuilo/aiscript";
-import { AiType, Type } from "./type.js";
+import { AiType, Type, stdTypes } from "./type.js";
+import { Scope } from "./Scope.js";
 
 export * from "./type.js";
 
@@ -27,168 +28,6 @@ export function toStringAiType(type: AiType): string {
     return "<unknown>";
   }
 }
-
-export class Scope {
-  constructor(
-    public variables: { [k: string]: AiType | undefined },
-    public types: { [k: string]: AiType | undefined },
-    public parent: Scope | null = null
-  ) {}
-
-  getVariable(name: string): AiType | undefined {
-    return this.variables[name] ?? this.parent?.getVariable(name);
-  }
-
-  getType(name: string): AiType | undefined {
-    return this.types[name] ?? this.parent?.getType(name);
-  }
-
-  setVariable(name: string, type: AiType): AiType | undefined {
-    return (this.variables[name] = type);
-  }
-
-  setType(name: string, type: AiType): AiType | undefined {
-    return (this.types[name] = type);
-  }
-
-  createChildScope(): Scope {
-    return new Scope({}, {}, this);
-  }
-}
-
-export const stdTypes = {
-  num: { type: "primitiveTypeName", name: "num" },
-  bool: { type: "primitiveTypeName", name: "bool" },
-  str: { type: "primitiveTypeName", name: "str" },
-  arr: { type: "primitiveTypeName", name: "arr" },
-  obj: { type: "primitiveTypeName", name: "obj" },
-  null: { type: "primitiveTypeName", name: "null" },
-  any: { type: "primitiveTypeName", name: "any" },
-} satisfies { [k: string]: AiType };
-
-export const stdScope: Scope = new Scope(
-  {
-    help: stdTypes.str,
-    "Core:v": stdTypes.str,
-    "Core:ai": stdTypes.str,
-    "Core:not": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.bool),
-      returnType: stdTypes.bool,
-    },
-    "Core:eq": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.any, stdTypes.any),
-      returnType: stdTypes.bool,
-    },
-    "Core:neq": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.any, stdTypes.any),
-      returnType: stdTypes.bool,
-    },
-    "Core:and": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.bool, stdTypes.bool),
-      returnType: stdTypes.bool,
-    },
-    "Core:or": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.bool, stdTypes.bool),
-      returnType: stdTypes.bool,
-    },
-    "Core:add": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.num, stdTypes.num),
-      returnType: stdTypes.num,
-    },
-    "Core:sub": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.num, stdTypes.num),
-      returnType: stdTypes.num,
-    },
-    "Core:mul": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.num, stdTypes.num),
-      returnType: stdTypes.num,
-    },
-    "Core:div": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.num, stdTypes.num),
-      returnType: stdTypes.num,
-    },
-    "Core:pow": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.num, stdTypes.num),
-      returnType: stdTypes.num,
-    },
-    "Core:mod": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.num, stdTypes.num),
-      returnType: stdTypes.num,
-    },
-    "Core:gt": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.num, stdTypes.num),
-      returnType: stdTypes.bool,
-    },
-    "Core:lt": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.num, stdTypes.num),
-      returnType: stdTypes.num,
-    },
-    "Core:gteq": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.num, stdTypes.num),
-      returnType: stdTypes.num,
-    },
-    "Core:lteq": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.num, stdTypes.num),
-      returnType: stdTypes.num,
-    },
-    "Core:type": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.any),
-      returnType: stdTypes.str,
-    },
-    "Core:to_str": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.any),
-      returnType: stdTypes.str,
-    },
-    "Core:range": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.num, stdTypes.num),
-      returnType: stdTypes.arr,
-    },
-    "Util:uuid": {
-      type: "functionType",
-      args: Type.tuple(),
-      returnType: stdTypes.str,
-    },
-    "Json:stringify": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.any),
-      returnType: stdTypes.str,
-    },
-    "Json:parseable": {
-      type: "functionType",
-      args: Type.tuple(stdTypes.str),
-      returnType: stdTypes.bool,
-    },
-    "Date:now": {
-      type: "functionType",
-      args: Type.tuple(),
-      returnType: stdTypes.num,
-    },
-    "Date:year": {
-      type: "functionType",
-      args: Type.union(Type.tuple(stdTypes.num), Type.tuple()),
-      returnType: stdTypes.num,
-    },
-  },
-  stdTypes
-);
 
 export class TypeError extends Error {
   constructor(
@@ -253,7 +92,9 @@ export function typeCheck(
       const args = functionType.args;
       const argTypes = Type.tuple(...node.args.map((x) => getType(x, scope)));
 
-      console.log("a - ", args, argTypes);
+      console.log(args, argTypes);
+
+      errors.push(...node.args.flatMap((arg) => typeCheck(arg, scope, parent)));
 
       errors.push(
         ...compareType(args, argTypes, scope).map(
@@ -416,12 +257,8 @@ export function compareType(x: AiType, y: AiType, scope: Scope): string[] {
       errors.push(`${toStringAiType(y)}は${toStringAiType(x)}と一致しません。`);
     }
 
-    for (let i = 0; i < x.children.length; i++) {
-      if (!compareType(x.children[i], y.children[i], scope)) {
-        errors.push(
-          `${toStringAiType(y.children[i])}は${x.children[i]}と一致しません。`
-        );
-      }
+    for (let i = 0; i < x.children.length && i < y.children.length; i++) {
+      errors.push(...compareType(x.children[i], y.children[i], scope));
     }
   } else if (x.type != y.type) {
     errors.push(`${toStringAiType(y)}は${toStringAiType(x)}と一致しません。`);
