@@ -24,7 +24,6 @@ export function toStringAiType(type: AiType): string {
   } else if (type.type == "tupleType") {
     return "[" + type.children.map((x) => toStringAiType(x)).join(", ") + "]";
   } else {
-    console.log(type);
     return "<unknown>";
   }
 }
@@ -91,9 +90,6 @@ export function typeCheck(
 
       const args = functionType.args;
       const argTypes = Type.tuple(...node.args.map((x) => getType(x, scope)));
-
-      console.log(args, argTypes);
-
       errors.push(...node.args.flatMap((arg) => typeCheck(arg, scope, parent)));
 
       errors.push(
