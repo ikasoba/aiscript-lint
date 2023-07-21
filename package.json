@@ -1,6 +1,7 @@
 {
 	"type": "module",
 	"name": "aiscript-lint",
+	"version": "0.1.0",
 	"main": "./src/index.js",
 	"bin": "./src/cli.js",
 	"scripts": {

@@ -10,6 +10,11 @@
     body {
       margin: 0px;
       height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background-color: #1e1e1e;
+      color: #d4d4d4;
+      font-family: Consolas, "Courier New", monospace;
     }
 
     #editor-wrapper {
@@ -17,9 +22,12 @@
       height: 100%;
     }
   </style>
+  <script defer type="module" src="./src/version.ts"></script>
 </head>
 
 <body>
+  <div style="padding: 0.5rem" id="version">
+  </div>
 </body>
 
 </html>

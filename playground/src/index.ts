@@ -12,6 +12,7 @@ function App(wrapper: HTMLElement) {
     value: code,
     language: "aiscript",
     theme: "vs-dark",
+    automaticLayout: true,
   });
 
   const model = editor.getModel()!;
