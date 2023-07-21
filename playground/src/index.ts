@@ -2,12 +2,14 @@ import * as monaco from "monaco-editor";
 import { Parser } from "@syuilo/aiscript";
 import { stdScope, typeCheckBlock, getLine, getLineIndex } from "aiscript-lint";
 import { install } from "./aiscript.language.js";
+import { fromBase64, toBase64 } from "./util.js";
 
 const defaultCode = "var hoge: str = 1234";
 
-function App(wrapper: HTMLElement) {
-  const code = localStorage.getItem("code") ?? defaultCode;
-
+function App(
+  wrapper: HTMLElement,
+  code = localStorage.getItem("code") ?? defaultCode
+) {
   const editor = monaco.editor.create(wrapper, {
     value: code,
     language: "aiscript",
@@ -20,6 +22,7 @@ function App(wrapper: HTMLElement) {
   const lint = () => {
     const code = editor.getValue();
     localStorage.setItem("code", code);
+    location.hash = `#code:${toBase64(code)}`;
 
     const markers: monaco.editor.IMarker[] = [];
 
@@ -85,5 +88,10 @@ window.addEventListener("load", () => {
   wrapper.id = "editor-wrapper";
 
   document.body.append(wrapper);
-  App(wrapper);
+
+  let code;
+  if (location.hash.startsWith("#code:")) {
+    code = fromBase64(location.hash.slice(6));
+  }
+  App(wrapper, code);
 });
