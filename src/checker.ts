@@ -1,6 +1,7 @@
 import { Parser, Ast } from "@syuilo/aiscript";
 import { AiType, Type, stdTypes } from "./type.js";
 import { Scope } from "./Scope.js";
+import { Loc } from "@syuilo/aiscript/node.js";
 
 export * from "./type.js";
 
@@ -31,9 +32,9 @@ export function toStringAiType(type: AiType): string {
 export class TypeError extends Error {
   constructor(
     message: string,
-    public location: { start: number; end: number } = { start: 0, end: 0 }
+    public location: Loc
   ) {
-    super(message + ` start: ${location.start} end: ${location.end}`);
+    super(message + ` start: (${location.start.line}: ${location.start.column}) end: (${location.end.line}: ${location.end.column})`);
   }
 }
 
@@ -58,7 +59,9 @@ export function typeCheck(
       )
     );
 
-    scope.setVariable(node.name, varType);
+    if (node.dest.type == "identifier") {
+      scope.setVariable(node.dest.name, varType);
+    }
   } else if (node.type == "assign") {
     const varType = getType(node.dest, scope);
     const exprType = getType(node.expr, scope);
@@ -156,11 +159,13 @@ export function typeCheck(
   } else if (node.type == "fn") {
     const fnScope = scope.createChildScope();
 
-    for (const arg of node.args) {
-      fnScope.setVariable(
-        arg.name,
-        arg.argType ? getType(arg.argType, scope) : stdTypes.any
-      );
+    for (const arg of node.params) {
+      if (arg.dest.type == "identifier") {
+        fnScope.setVariable(
+          arg.dest.name,
+          arg.argType ? getType(arg.argType, scope) : stdTypes.any
+        );
+      }
     }
 
     errors.push(...typeCheckBlock(node.children, fnScope, node));
@@ -293,7 +298,7 @@ export function getType(node: Node, scope: Scope): AiType {
     return {
       type: "functionType",
       args: Type.tuple(
-        ...node.args.map((x) =>
+        ...node.params.map((x) =>
           x.argType ? getType(x.argType, scope) : stdTypes.any
         )
       ),

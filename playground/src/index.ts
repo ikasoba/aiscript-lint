@@ -15,6 +15,7 @@ function App(
     language: "aiscript",
     theme: "vs-dark",
     automaticLayout: true,
+    fontFamily: "'Source Code Pro', 'Noto Sans Mono', monospace"
   });
 
   const model = editor.getModel()!;
@@ -34,10 +35,10 @@ function App(
       console.log("a", errors);
 
       for (const err of errors) {
-        const startLine = getLine(code, err.location.start);
-        const startColumn = getLineIndex(code, err.location.start);
-        const endLine = getLine(code, err.location.end);
-        const endColumn = getLineIndex(code, err.location.end);
+        const startLine = err.location.start.line
+        const startColumn = err.location.start.column;
+        const endLine = err.location.end.line;
+        const endColumn = err.location.end.column;
 
         console.log(`${startLine}:${startColumn}`);
 
@@ -56,7 +57,7 @@ function App(
       console.error(e);
 
       const message: string = e.message;
-      const m = message.match(/\(Line ([0-9]+):([0-9]+)\)/);
+      const m = message.match(/\(Line ([0-9]+), Column ([0-9]+)\)/);
 
       if (m != null) {
         const [_, line, column] = m;

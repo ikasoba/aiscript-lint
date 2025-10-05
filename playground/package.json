@@ -13,6 +13,7 @@
     "vite": "^4.4.0"
   },
   "dependencies": {
+    "@syuilo/aiscript": "^1.1.2",
     "aiscript-lint": "link:..",
     "monaco-editor": "^0.40.0"
   }
